@@ -1,0 +1,7 @@
+# SAMO
+name: samo 
+num_centers: 20
+initialize_centers: one_hot # ["one_hot", "random_ly", "evenly", "uniform"]
+m_real: 0.7
+m_fake: 0
+alpha: 20

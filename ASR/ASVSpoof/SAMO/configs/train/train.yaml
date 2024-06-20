@@ -1,0 +1,19 @@
+# Training hyperparameters
+defaults:
+  - _self_
+
+num_epoch: 100
+batch_size: 23
+
+optim:
+  name: adam
+  d_args:
+    lr: 0.0001
+    interval: 1
+    betas: [0.9, 0.999]
+    weight_decay: 0.0001
+    eps: 1e-8
+
+scheduler: cosine2 # ["cosine", "cosine2", "exp", "clr"]
+lr_min: 0.000005
+gpu_index: 0

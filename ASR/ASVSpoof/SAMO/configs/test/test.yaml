@@ -1,0 +1,8 @@
+# Test
+test_only: false
+test_model: model/feat_model.pt
+scoring: null # [None, "fc", "samo", "ocsoftmax"]
+save_socre: score # score file name
+save_center: true # save center in log file
+dp: true # data parallel
+test_one_hot: true # one hot vectors on test

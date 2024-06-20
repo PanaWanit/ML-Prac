@@ -1,0 +1,17 @@
+torch>=1.6.0
+torchcontrib
+numpy
+soundfile
+pytorch_model_summary
+pyyaml
+matplotlib
+tqdm
+librosa
+torchaudio
+torch_lr_finder
+# Additional
+omegaconf
+torchinfo
+wandb
+hydra
+importlib-resources==6.4.0
