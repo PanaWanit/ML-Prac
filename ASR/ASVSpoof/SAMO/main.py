@@ -16,7 +16,7 @@ def main(cfg: DictConfig) -> None:
     
     setup_seed(cfg.seed)
     output_dir_setup(cfg)
-    cuda_checker(cfg)
+    # cuda_checker(cfg)
 
     # feat_model = hydra.utils.instantiate(cfg.model.model)
     

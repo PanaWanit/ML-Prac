@@ -13,6 +13,8 @@ overwrite: false
 
 # Dataset prepare
 enc_dim: 160
+batch_size: 23
+target_only: true # only target utterance
 
 # Misc.
 verbose: false

@@ -6,6 +6,11 @@ import os
 import logging
 import shutil
 
+from torch.utils.data import Dataset, DataLoader, Subset
+from typing import Tuple, Dict, Any
+from samo.data_utils import genSpoof_list, ASVspoof2019_speaker
+
+
 def setup_seed(random_seed: int, cudnn_deterministic: bool = True) -> None:
     torch.manual_seed(random_seed)
     random.seed(random_seed)
@@ -37,4 +42,26 @@ def cuda_checker(cfg: DictConfig) -> None:
     if cfg.device == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("Cuda is not available on this device!")
     print(f"using device={cfg.device}")
-    
+
+
+# TODO: test this function
+def get_loader(cfg: DictConfig) -> Any:  # Tuple[Dict[str, DataLoader], ]:
+    db_path, seed, target_only, batch_size = cfg.path_to_database, cfg.seed, cfg.target_only, cfg.batch_size
+    tasks = ["train", "dev", "eval"]
+    trn_trls = ["trn", "trl", "trl"]
+
+    database_paths = { task : os.path.join(db_path, f"ASVspoof2019_LA_{task}") for task in tasks }
+    list_paths = { task : os.path.join(db_path, "ASVspoof2019_LA_cm_protocols", f"ASVspoof2019.LA.cm.{task}.{trn_trl}.txt")
+                   for task, trn_trl in zip(tasks, trn_trls) }
+    enroll_paths = {
+        task: [ os.path.join(db_path, "ASVspoof2019_LA_asv_protocols", f"ASVspoof2019.LA.asv.{task}.{gender}.trn.txt") 
+               for gender in ["female", "male"] ]
+        for task in ["dev", "eval"]
+    }
+
+    spoof_list_trn = genSpoof_list(dir_meta=list_paths["train"], base_dir=database_paths["train"], enroll=False, train=True)
+
+    print("no. training files", len(spoof_list_trn["list_IDs"]) )
+    print("no. training speaker", len(set(spoof_list_trn["utt2spk"].values())) )
+
+    train_set = ASVspoof2019_speaker(**spoof_list_trn)

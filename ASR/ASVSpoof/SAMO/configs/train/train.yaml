@@ -3,7 +3,6 @@ defaults:
   - _self_
 
 num_epoch: 100
-batch_size: 23
 
 optim:
   name: adam
