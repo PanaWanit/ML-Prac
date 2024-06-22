@@ -5,20 +5,19 @@ defaults:
   - loss: samo
   - _self_
 
-
-
 # Data folder
 path_to_database: LA/ASVspoof2019_LA_train
 path_to_protocol: LA/ASVspoof2019_LA_asv_protocols
-output_folder: output
+output_folder: samo_output
+overwrite: false
 
 # Dataset prepare
 enc_dim: 160
 
 # Misc.
-verbose: true
-seed: 42
-continue_training: true
+verbose: false
+seed: 10
+continue_training: false
 checkpoint: null
 
 final_test: true #run best model EER ont test set
@@ -27,5 +26,3 @@ save_interval: 5 # save checkpoint for every how many epoch
 
 sampling_rate: 16000
 device: cuda
-
-
