@@ -1,7 +1,9 @@
 from typing import Any, List, Sequence, Dict, Tuple, TextIO
 import numpy as np
 from numpy.typing import ArrayLike
-from aasist.data_utils import Dataset_ASVspoof2019_train
+from aasist.data_utils import Dataset_ASVspoof2019_train, pad, pad_random
+from torch import Tensor
+import soundfile as sf
 
 #################################################### genSpoof_list ####################################################
 def _flatten2d(l2d:List[List[Any]]) -> List[Any]:
@@ -63,18 +65,26 @@ def genSpoof_list(
 ########################################################################################################################
 
 ####################################################### Dataset ########################################################
+
+# combined Dataset_ASVspoof2019_train and Dataset_ASVspoof2019_devNeval into one Dataset + SAMO's purpose
 class ASVspoof2019_speaker(Dataset_ASVspoof2019_train):
     def __init__(self, list_IDs, labels, utt2spk, base_dir, tag_list, train=True, cut=64600):
         super().__init__(list_IDs, labels, base_dir)
         self.utt2spk = utt2spk
         self.tag_list = tag_list
         self.cut = cut
-        self.train = train
+        self.pad = pad_random if train else pad
+
     def __getitem__(self, index):
         utt = self.list_IDs[index]
         tag = self.tag_list[index]
-        x_inp, y = super().__getitem__(index)
         spk = self.utt2spk[utt]
+
+        X, _ = sf.read(str(self.base_dir / f"flac/{utt}.flac"))
+        X_pad = self.pad(X, self.cut)
+        x_inp = Tensor(X_pad)
+        y = self.labels[utt]
+
         return x_inp, y, spk, utt, tag
 
 
