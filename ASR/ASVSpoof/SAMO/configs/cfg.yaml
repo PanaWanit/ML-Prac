@@ -6,8 +6,7 @@ defaults:
   - _self_
 
 # Data folder
-path_to_database: LA/ASVspoof2019_LA_train
-path_to_protocol: LA/ASVspoof2019_LA_asv_protocols
+path_to_database: LA
 output_folder: samo_output
 overwrite: false
 

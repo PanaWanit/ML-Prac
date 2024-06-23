@@ -8,7 +8,7 @@ import shutil
 
 from torch.utils.data import Dataset, DataLoader, Subset
 from typing import Tuple, Dict, Any
-from samo.data_utils import genSpoof_list, ASVspoof2019_speaker
+from samo.data_utils import get_enroll_speaker, genSpoof_list, ASVspoof2019_speaker
 
 
 def setup_seed(random_seed: int, cudnn_deterministic: bool = True) -> None:
@@ -35,8 +35,6 @@ def output_dir_setup(cfg: DictConfig) -> None:
         os.makedirs(os.path.join(cfg.output_folder, "checkpoints"))
     if not os.path.exists(cfg.path_to_database):
         raise RuntimeError(f"Path {cfg.path_to_database} does not exists!")
-    if not os.path.exists(cfg.path_to_protocol):
-        raise RuntimeError(f"Path {cfg.path_to_database} does not exists!")
 
 def cuda_checker(cfg: DictConfig) -> None:
     if cfg.device == "cuda" and not torch.cuda.is_available():
@@ -44,24 +42,45 @@ def cuda_checker(cfg: DictConfig) -> None:
     print(f"using device={cfg.device}")
 
 
-# TODO: test this function
+# TODO: Finished this function
 def get_loader(cfg: DictConfig) -> Any:  # Tuple[Dict[str, DataLoader], ]:
     db_path, seed, target_only, batch_size = cfg.path_to_database, cfg.seed, cfg.target_only, cfg.batch_size
-    tasks = ["train", "dev", "eval"]
-    trn_trls = ["trn", "trl", "trl"]
+    # Dataloaders generator config
+    database_paths = { task : os.path.join(db_path, f"ASVspoof2019_LA_{task}") for task in ["train", "dev", "eval"] }
+    list_paths = { 
+        "train" : os.path.join(db_path, "ASVspoof2019_LA_cm_protocols/ASVspoof2019.LA.cm.train.trn.txt"),
+        "dev" : os.path.join(db_path, "ASVspoof2019_LA_cm_protocols/ASVspoof2019.LA.cm.dev.trl.txt"),
+        "eval" : os.path.join(db_path, "ASVspoof2019_LA_cm_protocols/ASVspoof2019.LA.cm.eval.trl.txt"),
+        "dev_enroll"  : [ os.path.join(db_path, "ASVspoof2019_LA_asv_protocols/ASVspoof2019.LA.asv.dev.female.trn.txt") ,
+                          os.path.join(db_path, "ASVspoof2019_LA_asv_protocols/ASVspoof2019.LA.asv.dev.male.trn.txt")],
+        "eval_enroll" : [ os.path.join(db_path, "ASVspoof2019_LA_asv_protocols/ASVspoof2019.LA.asv.eval.female.trn.txt") ,
+                         os.path.join(db_path, "ASVspoof2019_LA_asv_protocols/ASVspoof2019.LA.asv.eval.male.trn.txt")],
+    }
+    
+    enroll_spk = { "dev" : get_enroll_speaker(list_paths["dev_enroll"]), 
+                   "eval": get_enroll_speaker(list_paths["eval_enroll"]) }
 
-    database_paths = { task : os.path.join(db_path, f"ASVspoof2019_LA_{task}") for task in tasks }
-    list_paths = { task : os.path.join(db_path, "ASVspoof2019_LA_cm_protocols", f"ASVspoof2019.LA.cm.{task}.{trn_trl}.txt")
-                   for task, trn_trl in zip(tasks, trn_trls) }
-    enroll_paths = {
-        task: [ os.path.join(db_path, "ASVspoof2019_LA_asv_protocols", f"ASVspoof2019.LA.asv.{task}.{gender}.trn.txt") 
-               for gender in ["female", "male"] ]
-        for task in ["dev", "eval"]
+    genSpoof_list_cfg = {
+        "train"       : {"dir_meta": list_paths["train"]      , "base_dir": database_paths["train"], "enroll": False, "train": True },
+        "dev_enroll"  : {"dir_meta": list_paths["dev_enroll"] , "base_dir": database_paths["dev"]  , "enroll": True , "train": False},
+        "dev"         : {"dir_meta": list_paths["dev"]        , "base_dir": database_paths["dev"]  , "enroll": False, "train": False, "target_only": target_only, "enroll_spks": enroll_spk["dev"]},
+        "eval_enroll" : {"dir_meta": list_paths["eval_enroll"], "base_dir": database_paths["eval"] , "enroll": True , "train": False},
+        "eval"        : {"dir_meta": list_paths["eval"]       , "base_dir": database_paths["eval"] , "enroll": False, "train": False, "target_only": target_only, "enroll_spks": enroll_spk["eval"]}
     }
 
-    spoof_list_trn = genSpoof_list(dir_meta=list_paths["train"], base_dir=database_paths["train"], enroll=False, train=True)
+    # Create dataset, dataloader, etc.
+    asv_cfg_list = {task: genSpoof_list(**cfg) for task, cfg in genSpoof_list_cfg.items()}
+    datasets = {task: ASVspoof2019_speaker(**cfg) for task, cfg in asv_cfg_list.items()}
+    num_centers = {task: len(set(cfg["utt2spk"].values())) for task, cfg in asv_cfg_list.items()}
 
-    print("no. training files", len(spoof_list_trn["list_IDs"]) )
-    print("no. training speaker", len(set(spoof_list_trn["utt2spk"].values())) )
+    print(f"{' Loaders ':-^40}")
+    print(40 * '=')
+    for task, dataset in asv_cfg_list.items():
+        num_centers[task]=len(set(dataset["utt2spk"].values()))
+        print(f'{"|":<4} no. {task: <11} {"files:":^8} {len(dataset["list_IDs"]):^5} {"|":>4}')
+        print(f'{"|":<4} no. {task: <11} {"speaker:":^8} {num_centers[task]:^5} {"|":>4}' )
+        print(40 * '=')
+    print(40 * '*')
 
-    train_set = ASVspoof2019_speaker(**spoof_list_trn)
+
+    return asv_cfg_list, datasets, loaders ,num_centers

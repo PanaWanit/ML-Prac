@@ -5,7 +5,7 @@ from omegaconf import DictConfig, OmegaConf
 import logging
 from collections import defaultdict
 
-from samo.utils import setup_seed, output_dir_setup, cuda_checker
+from samo.utils import setup_seed, output_dir_setup, cuda_checker, get_loader
 
 @hydra.main(config_path="configs", config_name="cfg", version_base=None)
 def main(cfg: DictConfig) -> None:
@@ -21,6 +21,7 @@ def main(cfg: DictConfig) -> None:
     # feat_model = hydra.utils.instantiate(cfg.model.model)
     
     # test(cfg) if cfg.test_only else train(cfg)
+    tmp = get_loader(cfg)
 
 
 if __name__ == '__main__':
