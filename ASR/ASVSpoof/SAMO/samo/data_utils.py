@@ -1,4 +1,5 @@
 from typing import Any, List, Sequence, Dict, Tuple, TextIO
+import os
 from io import StringIO
 import soundfile as sf
 
@@ -8,7 +9,7 @@ from numpy.typing import ArrayLike
 from aasist.data_utils import pad, pad_random
 
 from torch import Tensor
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Subset
 
 #################################################### genSpoof_list ####################################################
 def _flatten2d(l2d:List[List[Any]]) -> np.ndarray[Any]:
@@ -93,19 +94,25 @@ class ASVspoof2019_speaker(Dataset):
         self.tag_list = tag_list
         self.cut = cut
         self.pad = pad_random if train else pad
+    
+    def __len__(self):
+        return len(self.list_IDs)
 
     def __getitem__(self, index):
         utt = self.list_IDs[index]
         tag = self.tag_list[index]
         spk = self.utt2spk[utt]
 
-        X, _ = sf.read(str(self.base_dir / f"flac/{utt}.flac"))
+        X, _ = sf.read(os.path.join(self.base_dir, f"flac/{utt}.flac"))
         X_pad = self.pad(X, self.cut)
         x_inp = Tensor(X_pad)
         y = self.labels[utt]
 
         return x_inp, y, spk, utt, tag
 
+def subset_bonafide(dataset: ASVspoof2019_speaker) -> ASVspoof2019_speaker:
+    bonafide_index = [i for i in range(len(dataset)) if dataset.labels[dataset.list_IDs[i]]==0]
+    return Subset(dataset, bonafide_index) # bonafide = 0, spoof = 1
 
 if __name__ == '__main__':
     a,b,c,d = genSpoof_list('LA/ASVspoof2019_LA_cm_protocols/ASVspoof2019.LA.cm.train.trn.txt', train=False, target_only=True)

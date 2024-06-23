@@ -1,14 +1,17 @@
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
+from collections import defaultdict
+
 import torch
-import random
 import numpy as np
-import os
+import random
+
 import logging
+import os
 import shutil
 
-from torch.utils.data import Dataset, DataLoader, Subset
-from typing import Tuple, Dict, Any
-from samo.data_utils import get_enroll_speaker, genSpoof_list, ASVspoof2019_speaker
+from torch.utils.data import DataLoader
+from typing import Tuple, Dict, List
+from samo.data_utils import get_enroll_speaker, genSpoof_list, subset_bonafide, ASVspoof2019_speaker
 
 
 def setup_seed(random_seed: int, cudnn_deterministic: bool = True) -> None:
@@ -21,6 +24,14 @@ def setup_seed(random_seed: int, cudnn_deterministic: bool = True) -> None:
         torch.cuda.manual_seed(random_seed)
         torch.backends.cudnn.deterministic = cudnn_deterministic # CUDA convolution determinism
         torch.backends.cudnn.benchmark = False  # Disabling the benchmarking feature, deterministically select an algorithm
+
+def _seed_worker(worker_id): # Reproducibility [https://pytorch.org/docs/stable/notes/randomness.html]
+    """
+    Used in generating seed for the worker of torch.utils.data.Dataloader
+    """
+    worker_seed = torch.initial_seed() % 2 ** 32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
 
 def output_dir_setup(cfg: DictConfig) -> None:
     if cfg.continue_training:
@@ -42,8 +53,8 @@ def cuda_checker(cfg: DictConfig) -> None:
     print(f"using device={cfg.device}")
 
 
-# TODO: Finished this function
-def get_loader(cfg: DictConfig) -> Any:  # Tuple[Dict[str, DataLoader], ]:
+# TODO: Dataloader
+def get_loader(cfg: DictConfig) -> Tuple[Dict[str, DataLoader], List[int]]:
     db_path, seed, target_only, batch_size = cfg.path_to_database, cfg.seed, cfg.target_only, cfg.batch_size
     # Dataloaders generator config
     database_paths = { task : os.path.join(db_path, f"ASVspoof2019_LA_{task}") for task in ["train", "dev", "eval"] }
@@ -59,7 +70,7 @@ def get_loader(cfg: DictConfig) -> Any:  # Tuple[Dict[str, DataLoader], ]:
     
     enroll_spk = { "dev" : get_enroll_speaker(list_paths["dev_enroll"]), 
                    "eval": get_enroll_speaker(list_paths["eval_enroll"]) }
-
+    # dataset
     genSpoof_list_cfg = {
         "train"       : {"dir_meta": list_paths["train"]      , "base_dir": database_paths["train"], "enroll": False, "train": True },
         "dev_enroll"  : {"dir_meta": list_paths["dev_enroll"] , "base_dir": database_paths["dev"]  , "enroll": True , "train": False},
@@ -68,19 +79,30 @@ def get_loader(cfg: DictConfig) -> Any:  # Tuple[Dict[str, DataLoader], ]:
         "eval"        : {"dir_meta": list_paths["eval"]       , "base_dir": database_paths["eval"] , "enroll": False, "train": False, "target_only": target_only, "enroll_spks": enroll_spk["eval"]}
     }
 
-    # Create dataset, dataloader, etc.
     asv_cfg_list = {task: genSpoof_list(**cfg) for task, cfg in genSpoof_list_cfg.items()}
     datasets = {task: ASVspoof2019_speaker(**cfg) for task, cfg in asv_cfg_list.items()}
     num_centers = {task: len(set(cfg["utt2spk"].values())) for task, cfg in asv_cfg_list.items()}
 
-    print(f"{' Loaders ':-^40}")
+    print(f"{' Dataset ':-^40}")
     print(40 * '=')
     for task, dataset in asv_cfg_list.items():
-        num_centers[task]=len(set(dataset["utt2spk"].values()))
         print(f'{"|":<4} no. {task: <11} {"files:":^8} {len(dataset["list_IDs"]):^5} {"|":>4}')
         print(f'{"|":<4} no. {task: <11} {"speaker:":^8} {num_centers[task]:^5} {"|":>4}' )
         print(40 * '=')
+
+    datasets["train_bona"] = subset_bonafide(datasets["train"])
+    print("bonafide speech in train set", len(datasets["train_bona"]))
     print(40 * '*')
 
+    # dataloader
+    gen = torch.Generator()
+    gen.manual_seed(seed)
+    loader_cfg = defaultdict(lambda :  {"shuffle": False, "drop_last": False }, # other dataloader
+                             {"train": {"shuffle": True , "drop_last": True , "worker_init_fn": _seed_worker, "generator": gen}}) # train data loader
 
-    return asv_cfg_list, datasets, loaders ,num_centers
+    loaders = {
+        task : DataLoader(dataset=dataset, batch_size=batch_size, pin_memory=True, **loader_cfg[task]) 
+        for task, dataset  in datasets.items()
+    }
+
+    return loaders, num_centers
