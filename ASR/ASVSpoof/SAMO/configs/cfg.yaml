@@ -26,4 +26,6 @@ test_interval: 5 # test on eval for every how many epoch
 save_interval: 5 # save checkpoint for every how many epoch
 
 sampling_rate: 16000
+dp: true # nn.DataParallel
 device: cuda
+gpu: 0

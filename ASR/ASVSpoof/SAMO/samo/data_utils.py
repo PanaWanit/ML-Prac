@@ -113,7 +113,3 @@ class ASVspoof2019_speaker(Dataset):
 def subset_bonafide(dataset: ASVspoof2019_speaker) -> ASVspoof2019_speaker:
     bonafide_index = [i for i in range(len(dataset)) if dataset.labels[dataset.list_IDs[i]]==0]
     return Subset(dataset, bonafide_index) # bonafide = 0, spoof = 1
-
-if __name__ == '__main__':
-    a,b,c,d = genSpoof_list('LA/ASVspoof2019_LA_cm_protocols/ASVspoof2019.LA.cm.train.trn.txt', train=False, target_only=True)
-    print(c, sep='\n')

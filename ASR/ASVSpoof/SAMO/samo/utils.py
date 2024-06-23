@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from typing import Tuple, Dict, List
 from samo.data_utils import get_enroll_speaker, genSpoof_list, subset_bonafide, ASVspoof2019_speaker
 
-
+############################################################# Reproducibility ##############################################################
 def setup_seed(random_seed: int, cudnn_deterministic: bool = True) -> None:
     torch.manual_seed(random_seed)
     random.seed(random_seed)
@@ -25,7 +25,7 @@ def setup_seed(random_seed: int, cudnn_deterministic: bool = True) -> None:
         torch.backends.cudnn.deterministic = cudnn_deterministic # CUDA convolution determinism
         torch.backends.cudnn.benchmark = False  # Disabling the benchmarking feature, deterministically select an algorithm
 
-def _seed_worker(worker_id): # Reproducibility [https://pytorch.org/docs/stable/notes/randomness.html]
+def _seed_worker(worker_id): # [https://pytorch.org/docs/stable/notes/randomness.html]
     """
     Used in generating seed for the worker of torch.utils.data.Dataloader
     """
@@ -33,6 +33,7 @@ def _seed_worker(worker_id): # Reproducibility [https://pytorch.org/docs/stable/
     np.random.seed(worker_seed)
     random.seed(worker_seed)
 
+############################################################# Output directory #############################################################
 def output_dir_setup(cfg: DictConfig) -> None:
     if cfg.continue_training:
         return
@@ -47,13 +48,13 @@ def output_dir_setup(cfg: DictConfig) -> None:
     if not os.path.exists(cfg.path_to_database):
         raise RuntimeError(f"Path {cfg.path_to_database} does not exists!")
 
+################################################################### CUDA ###################################################################
 def cuda_checker(cfg: DictConfig) -> None:
     if cfg.device == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("Cuda is not available on this device!")
     print(f"using device={cfg.device}")
 
-
-# TODO: Dataloader
+################################################################ DataLoader ################################################################
 def get_loader(cfg: DictConfig) -> Tuple[Dict[str, DataLoader], List[int]]:
     db_path, seed, target_only, batch_size = cfg.path_to_database, cfg.seed, cfg.target_only, cfg.batch_size
     # Dataloaders generator config
@@ -80,9 +81,12 @@ def get_loader(cfg: DictConfig) -> Tuple[Dict[str, DataLoader], List[int]]:
     }
 
     asv_cfg_list = {task: genSpoof_list(**cfg) for task, cfg in genSpoof_list_cfg.items()}
-    datasets = {task: ASVspoof2019_speaker(**cfg) for task, cfg in asv_cfg_list.items()}
     num_centers = {task: len(set(cfg["utt2spk"].values())) for task, cfg in asv_cfg_list.items()}
 
+    datasets = {task: ASVspoof2019_speaker(**cfg) for task, cfg in asv_cfg_list.items()}
+    datasets["train_bona"] = subset_bonafide(datasets["train"])
+
+    # Log dataset info
     print(f"{' Dataset ':-^40}")
     print(40 * '=')
     for task, dataset in asv_cfg_list.items():
@@ -90,8 +94,7 @@ def get_loader(cfg: DictConfig) -> Tuple[Dict[str, DataLoader], List[int]]:
         print(f'{"|":<4} no. {task: <11} {"speaker:":^8} {num_centers[task]:^5} {"|":>4}' )
         print(40 * '=')
 
-    datasets["train_bona"] = subset_bonafide(datasets["train"])
-    print("bonafide speech in train set", len(datasets["train_bona"]))
+    print('|', f'{"bonafide speech in train set = "+str(len(datasets["train_bona"])):^36}', '|')
     print(40 * '*')
 
     # dataloader
