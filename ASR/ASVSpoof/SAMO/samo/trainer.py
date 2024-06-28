@@ -65,8 +65,8 @@ class Trainer(object):
         return torch.stack(list(enroll_emb_dict.values()))
     
     
-    def _update_centers(self) -> None:
-        self._w_centers = self._get_centers_from_loader("train")
+    def _update_centers(self) -> None: 
+        self._w_centers = self._get_centers_from_loader(task="train")
 
     def train(self) -> None:
         for epoch in tqdm(range(1, self._num_epochs+1)): # understandable
@@ -79,7 +79,9 @@ class Trainer(object):
             self._update_centers()
         # TODO: Continue implementation
 
-
+    @property
+    def get_centers(self):
+        return self._w_centers
     @property
     def get_loaders(self):
         return self._loaders

@@ -55,14 +55,14 @@ def cuda_checker(cfg: DictConfig) -> None:
     print(f"using device={cfg.device}")
 
 ################################################################ DataLoader ################################################################
-def _log_loader_file(asv_cfg_list, datasets):
-     # Log dataset info
-    num_centers = {task: len(cfg["spks"]) for task, cfg in asv_cfg_list.items()}
+def _log_dataset(datasets):
     print(f"{' Dataset ':-^40}")
     print(40 * '=')
-    for task, dataset in asv_cfg_list.items():
-        print(f'{"|":<4} no. {task: <11} {"files:":^8} {len(dataset["list_IDs"]):^5} {"|":>4}')
-        print(f'{"|":<4} no. {task: <11} {"speaker:":^8} {num_centers[task]:^5} {"|":>4}' )
+    for task, dataset in datasets.items():
+        if task == "train_bona": # "train_bona" is a "Subset" object so it's doesn't has a "get_total_utterance" and "get_num_centers" getters
+            continue
+        print(f'{"|":<4} no. {task: <11} {"files:":^8} {dataset.get_total_utterances:^5} {"|":>4}')
+        print(f'{"|":<4} no. {task: <11} {"speaker:":^8} {dataset.get_num_centers:^5} {"|":>4}' )
         print(40 * '=')
 
     print('|', f'{"bonafide speech in train set = "+str(len(datasets["train_bona"])):^36}', '|')
@@ -94,10 +94,11 @@ def get_loader(cfg: DictConfig) -> Tuple[Dict[str, DataLoader], List[int]]:
     }
 
     asv_cfg_list = {task: genSpoof_list(**cfg) for task, cfg in genSpoof_list_cfg.items()}
+
     datasets = {task: ASVspoof2019_speaker(**cfg) for task, cfg in asv_cfg_list.items()}
     datasets["train_bona"] = subset_bonafide(datasets["train"])
 
-    _log_loader_file(asv_cfg_list, datasets)
+    _log_dataset(datasets)
 
     # dataloader
     gen = torch.Generator()

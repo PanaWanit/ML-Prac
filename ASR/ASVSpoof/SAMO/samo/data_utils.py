@@ -111,6 +111,11 @@ class ASVspoof2019_speaker(Dataset):
         y = self.labels[utt]
 
         return x_inp, y, spk, utt, tag
+
+    # Getter is implemented for only logging
+    @property
+    def get_total_utterances(self) -> int:
+        return len(self.list_IDs)
     
     @property
     def get_unique_speaker(self) -> List[str]:
