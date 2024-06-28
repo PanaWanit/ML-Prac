@@ -32,7 +32,7 @@ def _read_split(f: TextIO, enroll:bool) -> Sequence[np.ndarray]:
 def _label_map(lb:str) -> int:
     return int(lb!="bonafide")
 
-def _concat_text_files(dir_meta: List[str]):
+def _concat_text_files(dir_meta: List[str]) -> StringIO:
     txt = ""
     for dir in dir_meta:
         with open(dir, "r") as f:
@@ -40,7 +40,7 @@ def _concat_text_files(dir_meta: List[str]):
     return StringIO(txt)
 
 # read from asv_protocols/LA.asv.{task}.{male, female}.trn
-def get_enroll_speaker(dir_meta: List[str] | str): 
+def get_enroll_speaker(dir_meta: List[str] | str) -> List[str]: 
     spks, _ = _read_split(_concat_text_files(dir_meta), enroll=False)
     return list(set(spks)) # cast to list to make it compatible with np.isin with assume_unique=True
     
@@ -54,15 +54,14 @@ def genSpoof_list(
     train: bool = True,
     target_only: bool = False,
     enroll_spks: Optional[Sequence[str]] = None,
-) -> Dict[Any, Any]:
+) -> Dict[str, Any]:
     if not enroll:
         with open(dir_meta, "r") as f:
             spks, utt_list, _, tag_list, labels = _read_split(f, enroll)
             labels = _label_map(labels)
 
-        if not train:  # dev, eval
-            mask = np.isin(spks, enroll_spks, assume_unique=True) if target_only \
-                   else np.full_like(utt_list, True, dtype=np.bool_)
+        if not train and target_only:  # dev, eval
+            mask = np.isin(spks, enroll_spks, assume_unique=True)
             spks, utt_list, tag_list, labels = spks[mask], utt_list[mask], tag_list[mask], labels[mask]
 
     else: # for asv.{eval, dev}.trn protocols (enrolled data)
@@ -79,7 +78,8 @@ def genSpoof_list(
         "labels": d_meta, 
         "utt2spk": utt2spk, 
         "tag_list": tag_list.tolist(),
-        "train": train
+        "train": train,
+        "spks": sorted(list(set(spks)))
     }
 
 ########################################################################################################################
@@ -87,13 +87,14 @@ def genSpoof_list(
 ####################################################### Dataset ########################################################
 # combined Dataset_ASVspoof2019_train and Dataset_ASVspoof2019_devNeval into one Dataset + SAMO's purpose
 class ASVspoof2019_speaker(Dataset):
-    def __init__(self, list_IDs, labels, utt2spk, base_dir, tag_list, train=True, cut=64600):
+    def __init__(self, list_IDs, labels, utt2spk, base_dir, tag_list, spks, train=True, cut=64600):
         self.list_IDs = list_IDs
         self.labels = labels
         self.base_dir = base_dir
         self.utt2spk = utt2spk
         self.tag_list = tag_list
         self.cut = cut
+        self.__spks = spks # unique speaker
         self.pad = pad_random if train else pad
     
     def __len__(self):
@@ -110,6 +111,15 @@ class ASVspoof2019_speaker(Dataset):
         y = self.labels[utt]
 
         return x_inp, y, spk, utt, tag
+    
+    @property
+    def get_unique_speaker(self) -> List[str]:
+        return self.__spks
+        
+    @property
+    def get_num_centers(self) -> int:
+        return len(self.__spks)
+
 
 def subset_bonafide(dataset: ASVspoof2019_speaker) -> ASVspoof2019_speaker:
     is_bonafide = lambda i : dataset.labels[dataset.list_IDs[i]]==0 # bonafide = 0, spoof = 1

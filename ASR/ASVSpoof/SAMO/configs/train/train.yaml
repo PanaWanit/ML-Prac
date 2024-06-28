@@ -2,7 +2,8 @@
 defaults:
   - _self_
 
-num_epoch: 100
+num_epochs: 100
+update_interval: 3
 interval: 1
 gpu_index: 0
 
@@ -16,5 +17,5 @@ optim:
 
 scheduler: 
   _target_: torch.optim.lr_scheduler.CosineAnnealingLR
-  T_max: ${..num_epoch}
+  T_max: ${..num_epochs}
   eta_min: 0.000005

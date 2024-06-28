@@ -20,12 +20,12 @@ def main(cfg: DictConfig) -> None:
     output_dir_setup(cfg)
     # cuda_checker(cfg)
 
-    loaders, num_centers = get_loader(cfg)
+    loaders = get_loader(cfg)
     return 
     if cfg.test_only:
         pass
     else:
-        trainer = Trainer(cfg, loaders=loaders, num_centers=num_centers)
+        trainer = Trainer(cfg, loaders=loaders)
         trainer.train()
 
 

@@ -14,6 +14,7 @@ overwrite: false
 enc_dim: 160
 batch_size: 23
 target_only: true # only target utterance
+initialize_centers: "one_hot" # ["one_hot", "evenly"]
 
 # Misc.
 verbose: false

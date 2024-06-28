@@ -2,8 +2,6 @@
 name: samo
 fn:
   _target_: samo.loss.SAMO
-  feat_dim: ${enc_dim}
-  initialize_centers: one_hot # ["one_hot", "random_ly", "evenly", "uniform"]
   m_real: 0.7
   m_fake: 0
   alpha: 20

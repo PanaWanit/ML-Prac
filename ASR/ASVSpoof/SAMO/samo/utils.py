@@ -51,10 +51,23 @@ def output_dir_setup(cfg: DictConfig) -> None:
 ################################################################### CUDA ###################################################################
 def cuda_checker(cfg: DictConfig) -> None:
     if cfg.device == "cuda" and not torch.cuda.is_available():
-        raise RuntimeError("Cuda is not available on this device!")
+        raise RuntimeError("CUDA is not available on this device!")
     print(f"using device={cfg.device}")
 
 ################################################################ DataLoader ################################################################
+def _log_loader_file(asv_cfg_list, datasets):
+     # Log dataset info
+    num_centers = {task: len(cfg["spks"]) for task, cfg in asv_cfg_list.items()}
+    print(f"{' Dataset ':-^40}")
+    print(40 * '=')
+    for task, dataset in asv_cfg_list.items():
+        print(f'{"|":<4} no. {task: <11} {"files:":^8} {len(dataset["list_IDs"]):^5} {"|":>4}')
+        print(f'{"|":<4} no. {task: <11} {"speaker:":^8} {num_centers[task]:^5} {"|":>4}' )
+        print(40 * '=')
+
+    print('|', f'{"bonafide speech in train set = "+str(len(datasets["train_bona"])):^36}', '|')
+    print(40 * '*')
+
 def get_loader(cfg: DictConfig) -> Tuple[Dict[str, DataLoader], List[int]]:
     db_path, seed, target_only, batch_size = cfg.path_to_database, cfg.seed, cfg.target_only, cfg.batch_size
     # Dataloaders generator config
@@ -81,21 +94,10 @@ def get_loader(cfg: DictConfig) -> Tuple[Dict[str, DataLoader], List[int]]:
     }
 
     asv_cfg_list = {task: genSpoof_list(**cfg) for task, cfg in genSpoof_list_cfg.items()}
-    num_centers = {task: len(set(cfg["utt2spk"].values())) for task, cfg in asv_cfg_list.items()}
-
     datasets = {task: ASVspoof2019_speaker(**cfg) for task, cfg in asv_cfg_list.items()}
     datasets["train_bona"] = subset_bonafide(datasets["train"])
 
-    # Log dataset info
-    print(f"{' Dataset ':-^40}")
-    print(40 * '=')
-    for task, dataset in asv_cfg_list.items():
-        print(f'{"|":<4} no. {task: <11} {"files:":^8} {len(dataset["list_IDs"]):^5} {"|":>4}')
-        print(f'{"|":<4} no. {task: <11} {"speaker:":^8} {num_centers[task]:^5} {"|":>4}' )
-        print(40 * '=')
-
-    print('|', f'{"bonafide speech in train set = "+str(len(datasets["train_bona"])):^36}', '|')
-    print(40 * '*')
+    _log_loader_file(asv_cfg_list, datasets)
 
     # dataloader
     gen = torch.Generator()
@@ -108,4 +110,4 @@ def get_loader(cfg: DictConfig) -> Tuple[Dict[str, DataLoader], List[int]]:
         for task, dataset  in datasets.items()
     }
 
-    return loaders, num_centers
+    return loaders 
