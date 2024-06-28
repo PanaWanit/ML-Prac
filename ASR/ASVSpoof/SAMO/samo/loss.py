@@ -26,7 +26,8 @@ class SAMO(nn.Module):
         labels: torch.Tensor,
         w_centers: torch.Tensor,
         w_spks: Optional[torch.Tensor] = None,
-    ) -> Tuple[torch.FloatTensor, torch.Tensor]:
+        get_score: bool = False
+    ) -> torch.FloatTensor | Tuple[torch.FloatTensor, torch.Tensor]:
         """
         Args:
             x: (batch, feat_dim)
@@ -48,8 +49,9 @@ class SAMO(nn.Module):
         # exponential part of eq(3).
         scores = torch.where(labels == 0, self.__m_real - final_scores, max_scores - self.__m_fake) 
         emb_loss = F.softplus(self.__alpha * scores).mean()
-
-        return emb_loss, final_scores
+        if get_score:
+            return emb_loss, final_scores
+        return emb_loss
     
     # TODO: Inference function
     def inference(

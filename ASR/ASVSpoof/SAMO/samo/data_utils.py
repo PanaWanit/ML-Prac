@@ -112,7 +112,7 @@ class ASVspoof2019_speaker(Dataset):
 
         return x_inp, y, spk, utt, tag
 
-    # Getter is implemented for only logging
+    # Getter
     @property
     def get_total_utterances(self) -> int:
         return len(self.list_IDs)
