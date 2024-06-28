@@ -21,6 +21,7 @@ def main(cfg: DictConfig) -> None:
     # cuda_checker(cfg)
 
     loaders, num_centers = get_loader(cfg)
+    return 
     if cfg.test_only:
         pass
     else:

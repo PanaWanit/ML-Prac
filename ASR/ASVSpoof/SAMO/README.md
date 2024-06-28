@@ -3,5 +3,9 @@ Reimplementation based on [SAMO: Optimised Mapping of Convolutional Neural Netwo
 
 ## Todo
 - [ ] trainer, test function
+    - [ ] Trainer (On going)
+    - [ ] test function
 - [ ] loss(ocs, samo) functions
+    - [ ] ocs
+    - [x] samo
 - [x] loader for model, optimizer, etc.

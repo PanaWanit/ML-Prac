@@ -1,4 +1,4 @@
-from typing import Any, List, Sequence, Dict, Tuple, TextIO
+from typing import Any, List, Sequence, Dict, Optional, TextIO
 import os
 from io import StringIO
 import soundfile as sf
@@ -53,7 +53,7 @@ def genSpoof_list(
     enroll: bool = False,
     train: bool = True,
     target_only: bool = False,
-    enroll_spks: None | Sequence[str] = None,
+    enroll_spks: Optional[Sequence[str]] = None,
 ) -> Dict[Any, Any]:
     if not enroll:
         with open(dir_meta, "r") as f:
@@ -61,7 +61,8 @@ def genSpoof_list(
             labels = _label_map(labels)
 
         if not train:  # dev, eval
-            mask = np.full_like(utt_list, True, dtype=np.bool_) if not target_only else np.isin(spks, enroll_spks, assume_unique=True)
+            mask = np.isin(spks, enroll_spks, assume_unique=True) if target_only \
+                   else np.full_like(utt_list, True, dtype=np.bool_)
             spks, utt_list, tag_list, labels = spks[mask], utt_list[mask], tag_list[mask], labels[mask]
 
     else: # for asv.{eval, dev}.trn protocols (enrolled data)
@@ -111,5 +112,6 @@ class ASVspoof2019_speaker(Dataset):
         return x_inp, y, spk, utt, tag
 
 def subset_bonafide(dataset: ASVspoof2019_speaker) -> ASVspoof2019_speaker:
-    bonafide_index = [i for i in range(len(dataset)) if dataset.labels[dataset.list_IDs[i]]==0]
-    return Subset(dataset, bonafide_index) # bonafide = 0, spoof = 1
+    is_bonafide = lambda i : dataset.labels[dataset.list_IDs[i]]==0 # bonafide = 0, spoof = 1
+    bonafide_index = filter(is_bonafide, range(len(dataset)))
+    return Subset(dataset, list(bonafide_index)) 
