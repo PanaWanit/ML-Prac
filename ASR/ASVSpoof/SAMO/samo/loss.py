@@ -53,7 +53,7 @@ class SAMO(nn.Module):
             return emb_loss, final_scores
         return emb_loss
     
-    # TODO: Inference function
+    # TODO: Inference function for handle sample without enrollment
     def inference(
         self, 
         x: torch.Tensor,

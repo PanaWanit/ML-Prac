@@ -1,0 +1,52 @@
+{
+    "os": "macOS-14.5-arm64-arm-64bit",
+    "python": "3.10.8",
+    "heartbeatAt": "2024-06-28T16:49:02.231978",
+    "startedAt": "2024-06-28T16:49:01.340210",
+    "docker": null,
+    "cuda": null,
+    "args": [
+        "overwrite=True",
+        "device=cpu"
+    ],
+    "state": "running",
+    "program": "/Users/pnawn/Code/Machine_Learning/ML-Prac/ASR/ASVSpoof/SAMO/main.py",
+    "codePathLocal": "main.py",
+    "codePath": "ASR/ASVSpoof/SAMO/main.py",
+    "git": {
+        "remote": "git@github.com:PanaWanit/ML-Prac.git",
+        "commit": "ef01348b53ea8760f76b3e8e6822307fb56efa86"
+    },
+    "email": "pnaw.wan@gmail.com",
+    "root": "/Users/pnawn/Code/Machine_Learning/ML-Prac",
+    "host": "Panas-MacBook-Pro.local",
+    "username": "pnawn",
+    "executable": "/opt/homebrew/anaconda3/bin/python",
+    "cpu_count": 8,
+    "cpu_count_logical": 8,
+    "cpu_freq": {
+        "current": 3228,
+        "min": 600,
+        "max": 3228
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3228,
+            "min": 600,
+            "max": 3228
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 460.4317207336426,
+            "used": 184.03969955444336
+        }
+    },
+    "gpuapple": {
+        "type": "arm",
+        "vendor": "Apple"
+    },
+    "memory": {
+        "total": 16.0
+    }
+}

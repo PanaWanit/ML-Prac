@@ -2,12 +2,11 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 
 
-import logging
-from collections import defaultdict
-
 from samo.utils import setup_seed, output_dir_setup, cuda_checker
 from samo.trainer import Trainer
 from samo.utils import get_loader
+
+import wandb
 
 @hydra.main(config_path="configs", config_name="cfg", version_base=None)
 def main(cfg: DictConfig) -> None:
@@ -18,14 +17,15 @@ def main(cfg: DictConfig) -> None:
 
     setup_seed(cfg.seed)
     output_dir_setup(cfg)
-    # cuda_checker(cfg)
+    cuda_checker(cfg)
 
     loaders = get_loader(cfg)
     if cfg.test_only:
         pass
     else:
         trainer = Trainer(cfg, loaders=loaders)
-        # trainer.train()
+        trainer.train()
+
 
 
 if __name__ == '__main__':
