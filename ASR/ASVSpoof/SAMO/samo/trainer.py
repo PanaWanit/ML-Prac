@@ -163,8 +163,6 @@ class Trainer(object):
             else: # TODO: Implement SAMO.inference to handle non-target only
                 raise NotImplementedError # Not implement SAMO.inference yet
             
-            print(f"{'Type':=^100}")
-            print(f"{type(score)=} {type(labels)=} {type(utt)=} {type(tag)=} {type(spk)=}")
             val_losses.append(loss.item())
             batch_scores.append(score) # type(score) = tensor
             batch_labels.append(labels) # type(labels) = tensor
@@ -185,6 +183,7 @@ class Trainer(object):
     
     def _save_model(self, epoch:Optional[int] = None, best_model:bool = False) -> None:
         assert (epoch is not None) != best_model # not both set and not both unset
+        wandb.unwatch(self._feat_model) # unhook before save
 
         if not best_model: # save interval (will be used for continue training)
             checkpoint = {
@@ -201,8 +200,8 @@ class Trainer(object):
             torch.save(self._feat_model, os.path.join(self.output_dir, "anti-spoof_best_feat_model.pt"))
             torch.save(self.loss_fn, os.path.join(self.output_dir, "anti-spoof_best_loss_fn.pt"))
             torch.save(self.w_centers, os.path.join(self.output_dir, "anti-spoof_best_centers.pt"))
-            
 
+        wandb.watch(self._feat_model, log="all", log_freq=100, log_graph=False)
         
     @staticmethod
     @torch.no_grad
