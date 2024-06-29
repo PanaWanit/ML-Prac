@@ -23,7 +23,6 @@ continue_training: false
 checkpoint: null
 
 test_only: false
-final_test: true #run best model EER ont test set
 test_interval: 5 # test on eval for every how many epoch
 
 sampling_rate: 16000

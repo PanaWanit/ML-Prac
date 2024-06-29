@@ -2,9 +2,9 @@
 Reimplementation based on [SAMO: Optimised Mapping of Convolutional Neural Networks to Streaming Architectures](https://arxiv.org/abs/2112.00170)
 
 ## Todo
-- [ ] trainer, test function
-    - [x] Trainer (On going)
-    - [ ] test function
+- [x] trainer, test function
+    - [x] Trainer 
+    - [x] test function
 - [ ] loss(ocs, samo) functions
     - [ ] ocs
     - [x] samo

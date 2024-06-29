@@ -18,8 +18,8 @@ from torch.optim.lr_scheduler import LRScheduler
 
 from samo.utils import wandb_error_handler
 
-# from tqdm.notebook import tqdm # Train on kaggle notebook.
-from tqdm import tqdm
+from tqdm.notebook import tqdm # Train on kaggle notebook.
+# from tqdm import tqdm
 
 import eval_metrics as em
 
@@ -33,6 +33,7 @@ class Trainer(object):
         self._device:str = cfg.device
         self._num_epochs:int = cfg.train.num_epochs
         self._update_interval:int = cfg.train.update_interval # Reference: update embeddings every M times
+        self._final_test:bool = cfg.train.final_test
         self._save_interval = cfg.train.save_interval
         self._target_only:bool = cfg.target_only
 
@@ -79,7 +80,7 @@ class Trainer(object):
         )
         wandb.watch(self._feat_model, log="all", log_freq=100, log_graph=False)
 
-    @wandb_error_handler # Ensure that wandb will stop recording.
+    @wandb_error_handler # Ensure that wandb will stop recording if error occur.
     def train(self) -> None:
         self._init_wandb()
 
@@ -98,7 +99,6 @@ class Trainer(object):
 
             # logging
             wandb.log({"epoch":epoch, **log_train, **log_val})
-
     
     def _train_epoch(self, epoch:int) -> None:
         self.feat_model.train()
@@ -129,36 +129,55 @@ class Trainer(object):
             "lr": self.scheduler.get_lr()
         }
         
-        
-    
     @torch.no_grad
     def _val(self) -> Any:
-        self.feat_model.eval()
-        val_centers, val_spk2center = self._get_centers_from_loader(self._loaders["dev_enroll"])
-        batch_scores, batch_labels, val_losses = [], [], []
-        for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["dev"])):
-            feat, labels = feat.to(self._device), labels.to(self._device)
-            embs, _ = self.feat_model(feat)
-            w_spks = self.map_speakers_to_center(spks=spk, spk2center=val_spk2center)
-            if self._target_only:
-                loss, score = self.loss_fn(embs, labels, w_centers=val_centers, w_spks=w_spks, get_score=True) # get_score for computer eer
+        loss, labels, scores, _, _, _ = self.dev_n_eval(task="dev", 
+                                                        loaders=self._loaders,
+                                                        feat_model=self.feat_model, 
+                                                        loss_fn=self.loss_fn, device=self._device,
+                                                        target_only=self._target_only)
+        
+        # BUG: which val_labels == 0 or 1 should be placed first?
+        # For computes EER, does the result remain the same?
+        eer, _ = em.compute_eer(scores[labels == 0], scores[labels == 1])
+
+        return {
+            "val_loss": loss,
+            "val_eer": eer
+        }
+    
+    @staticmethod
+    @torch.no_grad
+    def dev_n_eval(task:str, loaders:Dict[str, DataLoader], feat_model:nn.Module, loss_fn:nn.Module, device:str, target_only:bool):
+        assert task in ["eval", "dev"]
+        feat_model.eval()
+        val_centers, val_spk2center = Trainer.get_center_from_loader(loaders[task+"_enroll"], feat_model, device)
+        batch_scores, batch_labels, val_losses, batch_utt, batch_tag, batch_spk = [], [], [], [], [], []
+        for i, (feat, labels, spk, utt, tag) in enumerate(tqdm(loaders["task"])):
+            feat, labels = feat.to(device), labels.to(device)
+            embs, _ = feat_model(feat)
+            w_spks = Trainer.map_speakers_to_center(spks=spk, spk2center=val_spk2center)
+            if target_only:
+                loss, score = loss_fn(embs, labels, w_centers=val_centers, w_spks=w_spks, get_score=True) # get_score for computer eer
             else: # TODO: Implement SAMO.inference to handle non-target only
                 raise NotImplementedError # Not implement SAMO.inference yet
+
             val_losses.append(loss.item())
             batch_scores.append(score)
             batch_labels.append(labels)
+            batch_utt.append(utt)
+            batch_tag.append(tag)
+            batch_spk.append(spk)
         
         val_loss = np.nanmean(val_losses)
         val_scores = torch.cat(batch_scores).cpu().numpy()
         val_labels = torch.cat(batch_labels).cpu().numpy()
-        # BUG: which val_labels == 0 or 1 should be placed first?
-        # For computes EER, does the result remain the same?
-        eer, _ = em.compute_eer(val_scores[val_labels == 0], val_scores[val_labels == 1])
+        val_utt = torch.cat(batch_utt).cpu().numpy()
+        val_tag = torch.cat(batch_tag).cpu().numpy()
+        val_spk = torch.cat(batch_spk).cpu().numpy()
 
-        return {
-            "val_loss": val_loss,
-            "val_eer": eer
-        }
+        return val_loss, val_labels, val_scores, val_utt, val_tag, val_spk
+
     
     def _save_model(self, epoch:Optional[int] = None, best_model:bool = False) -> None:
         assert (epoch is not None) != best_model # not both set and not both unset
@@ -181,23 +200,27 @@ class Trainer(object):
             
 
         
-    def _get_centers_from_loader(self, task:str) -> Tensor:
+    def _get_centers_from_task(self, task:str) -> Tensor: 
+        return self.get_center_from_loaders(self._loaders[task], self.feat_model, self._device)
+    
+    @staticmethod
+    @torch.no_grad
+    def get_center_from_loader(loader:DataLoader, feat_model:nn.Module, device:str) -> Tensor:
         enroll_emb_dict = defaultdict(list)
-        with torch.no_grad():
-            for i, (batch_x, _, spk, _, _) in enumerate(self._loaders[task]):
-                batch_x = batch_x.to(self._device)
-                batch_cm_emb, _ = self.feat_model(batch_x)
-                batch_cm_emb = batch_cm_emb.detach().cpu().numpy()
+        for batch_x, _, spk, _, _ in loader:
+            batch_x = batch_x.to(device)
+            batch_cm_emb, _ = feat_model(batch_x)
+            batch_cm_emb = batch_cm_emb.detach().cpu().numpy()
 
-                for spk, cm_emb in zip(batch_cm_emb, spk):
-                    enroll_emb_dict[spk].append(cm_emb)
-            
-            for spk, emb_np in enroll_emb_dict.items():
-                enroll_emb_dict[spk] = Tensor(emb_np.mean(axis=0))
+            for spk, cm_emb in zip(batch_cm_emb, spk):
+                enroll_emb_dict[spk].append(cm_emb)
+        
+        for spk, emb_np in enroll_emb_dict.items():
+            enroll_emb_dict[spk] = Tensor(emb_np.mean(axis=0))
         return torch.stack(list(enroll_emb_dict.values())), enroll_emb_dict
 
     def _update_embeddings(self) -> None:
-        avg_centers, spk2center = self._get_centers_from_loader("train_bona")
+        avg_centers, spk2center = self._get_centers_from_task("train_bona")
         self._w_centers = avg_centers
         self._train_spk2center = spk2center
     
