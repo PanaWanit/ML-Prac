@@ -1,5 +1,5 @@
 from omegaconf import DictConfig, OmegaConf
-from typing import Dict, Sequence, List, Any
+from typing import Dict, Sequence, List, Any, Optional
 
 import wandb
 
@@ -16,7 +16,10 @@ from collections import defaultdict
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 
-from tqdm.notebook import tqdm # Train on kaggle notebook.
+from samo.utils import wandb_error_handler
+
+# from tqdm.notebook import tqdm # Train on kaggle notebook.
+from tqdm import tqdm
 
 import eval_metrics as em
 
@@ -30,6 +33,7 @@ class Trainer(object):
         self._device:str = cfg.device
         self._num_epochs:int = cfg.train.num_epochs
         self._update_interval:int = cfg.train.update_interval # Reference: update embeddings every M times
+        self._save_interval = cfg.train.save_interval
         self._target_only:bool = cfg.target_only
 
         self._feat_model:nn.Module = instantiate(cfg.model.model).to(self._device)
@@ -64,39 +68,37 @@ class Trainer(object):
         else:
             raise RuntimeError("There is no {cfg.initialize_centers} method.")
         
-        self.__wandb_cfg_dict = OmegaConf.to_container(cfg)
+        self.__cfg_dict = OmegaConf.to_container(cfg)
     
     def _init_wandb(self) -> None:
         os.environ["WANDB_PROJECT"] = "SAMO ASVSpoof"
         wandb.init(
             job_type="SAMO",
-            config=self.__wandb_cfg_dict,
+            config=self.__cfg_dict,
             name=f"{self._device.upper()}-E{self._num_epochs}-T{int(self._target_only)}-DIM{self._feat_dim}-INIT={self._initialize_centers}"
         )
         wandb.watch(self._feat_model, log="all", log_freq=100, log_graph=False)
 
-    # TODO: wandb log
-    def _wandb_log(self, log_train, log_val, **kwargs) -> None:
-        wandb.log({
-            **kwargs, **log_train, **log_val
-        })
-    
+    @wandb_error_handler # Ensure that wandb will stop recording.
     def train(self) -> None:
         self._init_wandb()
 
-        try:
-            for epoch in tqdm(range(1, self._num_epochs+1)): # understandable
-                log_train:dict = self._train_epoch(epoch)
-                log_val:dict = self._val()
+        for epoch in tqdm(range(1, self._num_epochs+1), unit="epoch", position=0): # understandable
+            log_train:dict = self._train_epoch(epoch)
+            log_val:dict = self._val()
 
-                # TODO: Find best val loss + update swa
+            if epoch % self._save_interval == 0:
+                self._save_model(epoch, best_model=False)
 
-                # logging
-                self._wandb_log(log_train=log_train, log_val=log_val, epoch=epoch)
+            if self._best_val_loss > (val_loss:=log_val["val_loss"]):
+                self._best_val_loss = val_loss
+                self._save_model(best_model=True)
+                self.feat_model.train() # IDK 
+                self.optimizer_swa.update_parameters(self.feat_model)
 
-        finally:
-            wandb.unwatch(self.feat_model)
-            wandb.finish()
+            # logging
+            wandb.log({"epoch":epoch, **log_train, **log_val})
+
     
     def _train_epoch(self, epoch:int) -> None:
         self.feat_model.train()
@@ -105,7 +107,7 @@ class Trainer(object):
         if epoch % self._update_interval == 0:
             self._update_embeddings() # update both "speakers's center" and "speaker to center"
 
-        for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["train"])):
+        for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["train"], unit="batch")):
             feat, labels = feat.to(self._device), labels.to(self._device)
 
             self.optimizer.zero_grad()
@@ -140,7 +142,7 @@ class Trainer(object):
             w_spks = self.map_speakers_to_center(spks=spk, spk2center=val_spk2center)
             if self._target_only:
                 loss, score = self.loss_fn(embs, labels, w_centers=val_centers, w_spks=w_spks, get_score=True) # get_score for computer eer
-            else:
+            else: # TODO: Implement SAMO.inference to handle non-target only
                 raise NotImplementedError # Not implement SAMO.inference yet
             val_losses.append(loss.item())
             batch_scores.append(score)
@@ -157,6 +159,26 @@ class Trainer(object):
             "val_loss": val_loss,
             "val_eer": eer
         }
+    
+    def _save_model(self, epoch:Optional[int] = None, best_model:bool = False) -> None:
+        assert (epoch is not None) != best_model # not both set and not both unset
+
+        if not best_model: # save interval (will be used for continue training)
+            checkpoint = {
+                "epoch": epoch,
+                "feat_model": self.feat_model.state_dict(),
+                "loss_fn": self.loss_fn.state_dict(),
+                "optimizer": self._optimizer.state_dict(),
+                "optimizer_swa": self._optimizer_swa.state_dict(),
+                "scheduler": self.scheduler.state_dict(),
+                "w_centers": self.w_centers,
+            }
+            torch.save(checkpoint, os.path.join(self.output_dir, "checkpoints", f"anti-spoofing_settings_{epoch}.pt"))
+        else:
+            torch.save(self._feat_model, os.path.join(self.output_dir, "anti-spoof_best_feat_model.pt"))
+            torch.save(self.loss_fn, os.path.join(self.output_dir, "anti-spoof_best_loss_fn.pt"))
+            torch.save(self.w_centers, os.path.join(self.output_dir, "anti-spoof_best_centers.pt"))
+            
 
         
     def _get_centers_from_loader(self, task:str) -> Tensor:
@@ -173,7 +195,6 @@ class Trainer(object):
             for spk, emb_np in enroll_emb_dict.items():
                 enroll_emb_dict[spk] = Tensor(emb_np.mean(axis=0))
         return torch.stack(list(enroll_emb_dict.values())), enroll_emb_dict
-    
 
     def _update_embeddings(self) -> None:
         avg_centers, spk2center = self._get_centers_from_loader("train_bona")
@@ -201,6 +222,9 @@ class Trainer(object):
     @property
     def optimizer(self):
         return self._optimizer
+    @property
+    def optimizer_swa(self):
+        return self._optimizer_swa
     @property
     def scheduler(self):
         return self._scheduler

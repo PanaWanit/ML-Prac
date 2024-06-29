@@ -1,6 +1,10 @@
 from omegaconf import DictConfig
 from collections import defaultdict
 
+from functools import wraps
+
+import wandb
+
 import torch
 import numpy as np
 import random
@@ -72,7 +76,7 @@ def _log_dataset(datasets):
     print('|', f'{"bonafide speech in train set = "+str(len(datasets["train_bona"])):^36}', '|')
     print(40 * '*')
 
-def get_loader(cfg: DictConfig) -> Tuple[Dict[str, DataLoader], List[int]]:
+def get_loader(cfg: DictConfig) -> Dict[str, DataLoader]:
     db_path, seed, target_only, batch_size = cfg.path_to_database, cfg.seed, cfg.target_only, cfg.batch_size
     # Dataloaders generator config
     database_paths = { task : os.path.join(db_path, f"ASVspoof2019_LA_{task}") for task in ["train", "dev", "eval"] }
@@ -115,4 +119,20 @@ def get_loader(cfg: DictConfig) -> Tuple[Dict[str, DataLoader], List[int]]:
         for task, dataset  in datasets.items()
     }
 
-    return loaders 
+    return loaders
+
+################################################################ WANDB #################################################################
+
+def wandb_error_handler(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            func(*args, **kwargs)
+        except Exception as e:
+            print(f"Found Error in {func.__qualname__}.")
+            raise e
+        finally:
+            print("Stop recording on wandb...")
+            wandb.unwatch()
+            wandb.finish()
+    return wrapper
