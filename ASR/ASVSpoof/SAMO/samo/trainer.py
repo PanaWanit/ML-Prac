@@ -86,7 +86,7 @@ class Trainer(object):
         self._init_wandb()
 
         for epoch in tqdm(range(1, self._num_epochs+1), unit="epoch", position=0):
-            # log_train:dict = self._train_epoch(epoch)
+            log_train:dict = self._train_epoch(epoch)
             log_val:dict = self._val()
 
             if epoch % self._save_interval == 0:
@@ -169,7 +169,6 @@ class Trainer(object):
             batch_utt.extend(utt) # type(utt) = list
             batch_tag.extend(tag) # type(tag) = list
             batch_spk.extend(spk) # type(spk) = list
-            break
         
         val_loss = np.nanmean(val_losses)
         val_scores = torch.cat(batch_scores).cpu().numpy()
