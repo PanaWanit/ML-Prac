@@ -18,7 +18,8 @@ from torch.optim.lr_scheduler import LRScheduler
 
 from samo.utils import wandb_error_handler
 
-from tqdm.auto import tqdm
+# from tqdm.auto import tqdm
+from tqdm import tqdm_notebook as tqdm
 
 import eval_metrics as em
 
