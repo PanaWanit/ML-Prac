@@ -86,7 +86,7 @@ class Trainer(object):
         self._init_wandb()
 
         for epoch in tqdm(range(1, self._num_epochs+1), unit="epoch", position=0):
-            log_train:dict = self._train_epoch(epoch)
+            # log_train:dict = self._train_epoch(epoch)
             log_val:dict = self._val()
 
             if epoch % self._save_interval == 0:
@@ -98,7 +98,6 @@ class Trainer(object):
                 self.feat_model.train() # IDK 
                 self.optimizer_swa.update_parameters(self.feat_model)
 
-            # logging
             wandb.log({"epoch":epoch, **log_train, **log_val})
     
     def _train_epoch(self, epoch:int) -> None:
@@ -163,13 +162,15 @@ class Trainer(object):
                 loss, score = loss_fn(embs, labels, w_centers=val_centers, w_spks=w_spks, get_score=True) # get_score for computer eer
             else: # TODO: Implement SAMO.inference to handle non-target only
                 raise NotImplementedError # Not implement SAMO.inference yet
-
+            print(f"{'Type':=^100}")
+            print(f"{type(score)=} {type(labels)=} {type(utt)=} {type(tag)=} {type(spk)=}")
             val_losses.append(loss.item())
             batch_scores.append(score)
             batch_labels.append(labels)
             batch_utt.append(utt)
             batch_tag.append(tag)
             batch_spk.append(spk)
+            break
         
         val_loss = np.nanmean(val_losses)
         val_scores = torch.cat(batch_scores).cpu().numpy()
