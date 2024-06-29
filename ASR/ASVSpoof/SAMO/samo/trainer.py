@@ -40,7 +40,7 @@ class Trainer(object):
         # FIXME: DATA PARALLEL
         # if cfg.dp and (gpu_cnt := torch.cuda.device_count()) > 1:
         if False:
-            # print('Trainer use total', gpu_cnt, 'GPUs')
+            print('Trainer use total', gpu_cnt, 'GPUs')
             self._feat_model = nn.parallel.DistributedDataParallel(self._feat_model, output_device=[cfg.gpu])
 
         self._loaders:Dict[str, DataLoader] = loaders
@@ -86,7 +86,7 @@ class Trainer(object):
         self._init_wandb()
 
         for epoch in tqdm(range(1, self._num_epochs+1), unit="epoch", position=0):
-            # log_train:dict = self._train_epoch(epoch)
+            log_train:dict = self._train_epoch(epoch)
             log_val:dict = self._val()
 
             if epoch % self._save_interval == 0:
@@ -155,7 +155,7 @@ class Trainer(object):
         val_centers, val_spk2center = Trainer.get_center_from_loader(loaders[task+"_enroll"], feat_model, device)
         batch_scores, batch_labels, val_losses, batch_utt, batch_tag, batch_spk = [], [], [], [], [], []
         # print(f"eval {task} set.")
-        for i, (feat, labels, spk, utt, tag) in enumerate(tqdm(loaders[task])):
+        for i, (feat, labels, spk, utt, tag) in enumerate(tqdm(loaders[task], position=1, mininterval=100)):
             feat, labels = feat.to(device), labels.to(device)
             embs, _ = feat_model(feat)
             w_spks = Trainer.map_speakers_to_center(spks=spk, spk2center=val_spk2center)
