@@ -40,7 +40,7 @@ class Trainer(object):
         self._feat_model:nn.Module = instantiate(cfg.model.model).to(self._device)
         if cfg.dp and (gpu_cnt := torch.cuda.device_count()) > 1:
             print('Trainer use total', gpu_cnt, 'GPUs')
-            self._feat_model = nn.DistributedDataParallel(self._feat_model, output_device=[cfg.gpu])
+            self._feat_model = nn.parallel.DistributedDataParallel(self._feat_model, output_device=[cfg.gpu])
 
         self._loaders:Dict[str, DataLoader] = loaders
         self._train_num_centers:int = loaders["train"].dataset.get_num_centers
