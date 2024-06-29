@@ -86,7 +86,7 @@ class Trainer(object):
         self._init_wandb()
 
         for epoch in tqdm(range(1, self._num_epochs+1), unit="epoch", position=0):
-            log_train:dict = self._train_epoch(epoch)
+            # log_train:dict = self._train_epoch(epoch)
             log_val:dict = self._val()
 
             if epoch % self._save_interval == 0:
@@ -103,7 +103,7 @@ class Trainer(object):
     
     def _train_epoch(self, epoch:int) -> None:
         self.feat_model.train()
-        # print(f"\nEpoch: {epoch}") # tqdm new progress bar bug?
+        # print(f"\nEpoch: {epoch}") # tqdm progress bar bug?
         train_losses = []
         if epoch % self._update_interval == 0:
             self._update_embeddings() # update both "speakers's center" and "speaker to center"
@@ -154,7 +154,7 @@ class Trainer(object):
         feat_model.eval()
         val_centers, val_spk2center = Trainer.get_center_from_loader(loaders[task+"_enroll"], feat_model, device)
         batch_scores, batch_labels, val_losses, batch_utt, batch_tag, batch_spk = [], [], [], [], [], []
-        print(f"eval {task} set.")
+        # print(f"eval {task} set.")
         for i, (feat, labels, spk, utt, tag) in enumerate(tqdm(loaders["task"])):
             feat, labels = feat.to(device), labels.to(device)
             embs, _ = feat_model(feat)
@@ -202,9 +202,6 @@ class Trainer(object):
             
 
         
-    def _get_centers_from_task(self, task:str) -> Tensor: 
-        return self.get_center_from_loaders(self._loaders[task], self.feat_model, self._device)
-    
     @staticmethod
     @torch.no_grad
     def get_center_from_loader(loader:DataLoader, feat_model:nn.Module, device:str) -> Tensor:
@@ -214,7 +211,7 @@ class Trainer(object):
             batch_cm_emb, _ = feat_model(batch_x)
             batch_cm_emb = batch_cm_emb.detach().cpu().numpy()
 
-            for spk, cm_emb in zip(batch_cm_emb, batch_spk):
+            for spk, cm_emb in zip(batch_spk, batch_cm_emb):
                 enroll_emb_dict[spk].append(cm_emb)
         
         for spk, emb_np in enroll_emb_dict.items():
@@ -222,7 +219,7 @@ class Trainer(object):
         return torch.stack(list(enroll_emb_dict.values())), enroll_emb_dict
 
     def _update_embeddings(self) -> None:
-        avg_centers, spk2center = self._get_centers_from_task("train_bona")
+        avg_centers, spk2center = self.get_center_from_loader(self._loaders["train_bona"], self.feat_model, self._device)
         self._w_centers = avg_centers
         self._train_spk2center = spk2center
     
