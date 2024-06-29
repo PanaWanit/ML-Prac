@@ -209,12 +209,12 @@ class Trainer(object):
     @torch.no_grad
     def get_center_from_loader(loader:DataLoader, feat_model:nn.Module, device:str) -> Tensor:
         enroll_emb_dict = defaultdict(list)
-        for batch_x, _, spk, _, _ in loader:
+        for batch_x, _, batch_spk, _, _ in loader:
             batch_x = batch_x.to(device)
             batch_cm_emb, _ = feat_model(batch_x)
             batch_cm_emb = batch_cm_emb.detach().cpu().numpy()
 
-            for spk, cm_emb in zip(batch_cm_emb, spk):
+            for spk, cm_emb in zip(batch_cm_emb, batch_spk):
                 enroll_emb_dict[spk].append(cm_emb)
         
         for spk, emb_np in enroll_emb_dict.items():
