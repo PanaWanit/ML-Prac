@@ -215,7 +215,7 @@ class Trainer(object):
                 enroll_emb_dict[spk].append(cm_emb)
         
         for spk, emb_np in enroll_emb_dict.items():
-            enroll_emb_dict[spk] = Tensor(emb_np.mean(axis=0))
+            enroll_emb_dict[spk] = Tensor(np.mean(emb_np, axis=0))
         return torch.stack(list(enroll_emb_dict.values())), enroll_emb_dict
 
     def _update_embeddings(self) -> None:
