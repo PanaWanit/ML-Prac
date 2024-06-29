@@ -9,3 +9,6 @@ Reimplementation based on [SAMO: Optimised Mapping of Convolutional Neural Netwo
     - [ ] ocs
     - [x] samo
 - [x] loader for model, optimizer, etc.
+
+# Note
+I test my code on Kaggle, so I need to frequently commit when I'm testing.

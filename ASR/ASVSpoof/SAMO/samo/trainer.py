@@ -18,8 +18,7 @@ from torch.optim.lr_scheduler import LRScheduler
 
 from samo.utils import wandb_error_handler
 
-# from tqdm.auto import tqdm
-from tqdm.autonotebook import tqdm
+from tqdm.auto import tqdm
 
 import eval_metrics as em
 
@@ -104,7 +103,7 @@ class Trainer(object):
     
     def _train_epoch(self, epoch:int) -> None:
         self.feat_model.train()
-        print(f"\nEpoch: {epoch}")
+        # print(f"\nEpoch: {epoch}") # tqdm new progress bar bug?
         train_losses = []
         if epoch % self._update_interval == 0:
             self._update_embeddings() # update both "speakers's center" and "speaker to center"
