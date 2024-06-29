@@ -18,8 +18,7 @@ from torch.optim.lr_scheduler import LRScheduler
 
 from samo.utils import wandb_error_handler
 
-from tqdm.notebook import tqdm # Train on kaggle notebook.
-# from tqdm import tqdm
+from tqdm.auto import tqdm
 
 import eval_metrics as em
 
@@ -38,7 +37,9 @@ class Trainer(object):
         self._target_only:bool = cfg.target_only
 
         self._feat_model:nn.Module = instantiate(cfg.model.model).to(self._device)
-        if cfg.dp and (gpu_cnt := torch.cuda.device_count()) > 1:
+        # FIXME: DATA PARALLEL
+        # if cfg.dp and (gpu_cnt := torch.cuda.device_count()) > 1:
+        if False:
             print('Trainer use total', gpu_cnt, 'GPUs')
             self._feat_model = nn.parallel.DistributedDataParallel(self._feat_model, output_device=[cfg.gpu])
 
@@ -117,7 +118,7 @@ class Trainer(object):
             w_spks = self.map_speakers_to_center(spks=spk, spk2center=self._train_spk2center)
 
             loss = self.loss_fn(embs, labels, self.w_centers, w_spks=w_spks)
-            train_losses.append(loss)
+            train_losses.append(loss.item())
             loss.backward()
 
             self.optimizer.step()
