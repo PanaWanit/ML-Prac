@@ -85,7 +85,7 @@ class Trainer(object):
     def train(self) -> None:
         self._init_wandb()
 
-        for epoch in tqdm(range(1, self._num_epochs+1), unit="epoch", position=0): # understandable
+        for epoch in tqdm(range(1, self._num_epochs+1), unit="epoch", position=0, leave=True): # understandable
             log_train:dict = self._train_epoch(epoch)
             log_val:dict = self._val()
 
@@ -108,7 +108,7 @@ class Trainer(object):
         if epoch % self._update_interval == 0:
             self._update_embeddings() # update both "speakers's center" and "speaker to center"
 
-        for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["train"], unit="batch")):
+        for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["train"], unit="batch", position=1, leave=True)):
             feat, labels = feat.to(self._device), labels.to(self._device)
 
             self.optimizer.zero_grad()
