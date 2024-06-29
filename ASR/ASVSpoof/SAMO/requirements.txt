@@ -13,5 +13,5 @@ torch_lr_finder
 omegaconf
 torchinfo
 wandb
-hydra
+hydra-core
 importlib-resources==6.4.0
