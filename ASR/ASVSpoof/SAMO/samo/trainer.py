@@ -162,22 +162,23 @@ class Trainer(object):
                 loss, score = loss_fn(embs, labels, w_centers=val_centers, w_spks=w_spks, get_score=True) # get_score for computer eer
             else: # TODO: Implement SAMO.inference to handle non-target only
                 raise NotImplementedError # Not implement SAMO.inference yet
+            
             print(f"{'Type':=^100}")
             print(f"{type(score)=} {type(labels)=} {type(utt)=} {type(tag)=} {type(spk)=}")
             val_losses.append(loss.item())
-            batch_scores.append(score)
-            batch_labels.append(labels)
-            batch_utt.append(utt)
-            batch_tag.append(tag)
-            batch_spk.append(spk)
+            batch_scores.append(score) # type(score) = tensor
+            batch_labels.append(labels) # type(labels) = tensor
+            batch_utt.extend(utt) # type(utt) = list
+            batch_tag.extend(tag) # type(tag) = list
+            batch_spk.extend(spk) # type(spk) = list
             break
         
         val_loss = np.nanmean(val_losses)
         val_scores = torch.cat(batch_scores).cpu().numpy()
         val_labels = torch.cat(batch_labels).cpu().numpy()
-        val_utt = torch.cat(batch_utt).cpu().numpy()
-        val_tag = torch.cat(batch_tag).cpu().numpy()
-        val_spk = torch.cat(batch_spk).cpu().numpy()
+        val_utt = batch_utt
+        val_tag = batch_tag
+        val_spk = batch_spk
 
         return val_loss, val_labels, val_scores, val_utt, val_tag, val_spk
 
