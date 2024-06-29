@@ -126,7 +126,7 @@ class Trainer(object):
         train_loss = np.nanmean(train_losses)
         return {
             "train_loss": train_loss,
-            "lr": self.scheduler.get_lr()
+            "lr": self.scheduler.get_last_lr()
         }
         
     @torch.no_grad
