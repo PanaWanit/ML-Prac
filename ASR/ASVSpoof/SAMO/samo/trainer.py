@@ -74,7 +74,7 @@ class Trainer(object):
         self.__cfg_dict = OmegaConf.to_container(cfg)
     
     def _init_wandb(self) -> None:
-        os.environ["WANDB_PROJECT"] = "SAMO ASVSpoof"
+        os.environ["WANDB_PROJECT"] = "SAMO Reimplementation"
         wandb.init(
             job_type="SAMO",
             config=self.__cfg_dict,

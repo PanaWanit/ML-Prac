@@ -17,7 +17,7 @@ def main(cfg: DictConfig) -> None:
         print(OmegaConf.to_yaml(cfg))
         print(48 * '-')
 
-    logging.basicConfig(level=logging.INFO, filename="py_log.log",filemode="w")
+    logging.basicConfig(level=logging.DEBUG, filename="py_dbg_log.log", filemode="w")
 
     setup_seed(cfg.seed)
     output_dir_setup(cfg)
@@ -30,7 +30,7 @@ def main(cfg: DictConfig) -> None:
     else:
         trainer = Trainer(cfg, loaders=loaders)
         trainer.train()
-        test_feat_model_path = os.path.join(cfg.output_dir, "anti-spoof_best_feat_model.pt")
+        test_feat_model_path = os.path.join(cfg.output_folder, "anti-spoof_best_feat_model.pt")
         if cfg.train.final_test:
             test(test_feat_model_path, loaders, cfg)
         
