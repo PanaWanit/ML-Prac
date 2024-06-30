@@ -85,7 +85,7 @@ class Trainer(object):
     def train(self) -> None:
         self._init_wandb()
 
-        for epoch in tqdm(range(1, self._num_epochs+1), unit="epoch", position=0):
+        for epoch in tqdm(range(1, self._num_epochs+1), unit="epoch", desc='Epoch', position=0):
             log_train:dict = self._train_epoch(epoch)
             log_val:dict = self._val()
 
@@ -106,8 +106,8 @@ class Trainer(object):
         train_losses = []
         if epoch % self._update_interval == 0:
             self._update_embeddings() # update both "speakers's center" and "speaker to center"
-
-        for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["train"], unit="batch", position=1, mininterval=110)):
+        leave = epoch == self._num_epochs
+        for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["train"], unit="batch", position=1, desc='train batch', leave=leave)):
             feat, labels = feat.to(self._device), labels.to(self._device)
 
             self.optimizer.zero_grad()
@@ -126,7 +126,7 @@ class Trainer(object):
         train_loss = np.nanmean(train_losses)
         return {
             "train_loss": train_loss,
-            "lr": self.scheduler.get_last_lr()
+            "lr": self.scheduler.get_last_lr()[0]
         }
         
     @torch.no_grad
@@ -154,7 +154,7 @@ class Trainer(object):
         val_centers, val_spk2center = Trainer.get_center_from_loader(loaders[task+"_enroll"], feat_model, device)
         batch_scores, batch_labels, val_losses, batch_utt, batch_tag, batch_spk = [], [], [], [], [], []
         # print(f"eval {task} set.")
-        for i, (feat, labels, spk, utt, tag) in enumerate(tqdm(loaders[task], position=1, mininterval=100)):
+        for i, (feat, labels, spk, utt, tag) in enumerate(tqdm(loaders[task], position=0, desc=f"{task} batch", mininterval=100, leave=False)):
             feat, labels = feat.to(device), labels.to(device)
             embs, _ = feat_model(feat)
             w_spks = Trainer.map_speakers_to_center(spks=spk, spk2center=val_spk2center)
