@@ -10,7 +10,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 from samo.trainer import Trainer
 
-import eval_metrics as em
+import samo.eval_metrics as em
 from samo.utils import compute_eer_tdcf
 
 # TODO: Test function

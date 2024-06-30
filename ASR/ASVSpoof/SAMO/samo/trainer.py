@@ -20,7 +20,7 @@ from samo.utils import wandb_error_handler
 
 from tqdm.auto import tqdm
 
-import eval_metrics as em
+import samo.eval_metrics as em
 
 class Trainer(object):
     def __init__(self, 
@@ -106,8 +106,7 @@ class Trainer(object):
         train_losses = []
         if epoch % self._update_interval == 0:
             self._update_embeddings() # update both "speakers's center" and "speaker to center"
-        leave = epoch == self._num_epochs
-        for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["train"], unit="batch", mininterval=100, position=1, desc='train batch', leave=leave)):
+        for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["train"], unit="batch", mininterval=100, position=1, desc='train batch', leave=True)):
             feat, labels = feat.to(self._device), labels.to(self._device)
 
             self.optimizer.zero_grad()
