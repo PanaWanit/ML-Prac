@@ -50,9 +50,6 @@ def output_dir_setup(cfg: DictConfig) -> None:
         os.mkdir(cfg.output_folder)
         os.makedirs(os.path.join(cfg.output_folder, "checkpoints"))
 
-    with open(os.path.join(cfg.output_folder, "train_loss.log"), "a") as f:
-        f.write(f"{'Epoch':<10} {'batch':<10} {'Loss':<20}")
-
     if not os.path.exists(cfg.path_to_database):
         raise RuntimeError(f"Path {cfg.path_to_database} does not exists!")
 

@@ -1,6 +1,8 @@
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
+import logging
+
 import os
 
 from samo.utils import setup_seed, output_dir_setup, cuda_checker
@@ -14,6 +16,8 @@ def main(cfg: DictConfig) -> None:
         print(20 *'-', f"{'Config': ^5}", 20 *'-', '\n')
         print(OmegaConf.to_yaml(cfg))
         print(48 * '-')
+
+    logging.basicConfig(level=logging.INFO, filename="py_log.log",filemode="w")
 
     setup_seed(cfg.seed)
     output_dir_setup(cfg)

@@ -107,7 +107,7 @@ class Trainer(object):
         train_losses = []
         if epoch % self._update_interval == 0:
             self._update_embeddings() # update both "speakers's center" and "speaker to center"
-        for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["train"], unit="batch", position=1, desc='train batch', leave=False)):
+        for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["train"], unit="batch", position=0, desc='train batch', leave=False)):
             feat, labels = feat.to(self._device), labels.to(self._device)
 
             self.optimizer.zero_grad()
