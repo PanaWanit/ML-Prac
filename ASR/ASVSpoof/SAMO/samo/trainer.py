@@ -107,7 +107,7 @@ class Trainer(object):
         if epoch % self._update_interval == 0:
             self._update_embeddings() # update both "speakers's center" and "speaker to center"
         leave = epoch == self._num_epochs
-        for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["train"], unit="batch", miniters=100, position=1, desc='train batch', leave=leave)):
+        for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["train"], unit="batch", mininterval=100, position=1, desc='train batch', leave=leave)):
             feat, labels = feat.to(self._device), labels.to(self._device)
 
             self.optimizer.zero_grad()
@@ -154,7 +154,7 @@ class Trainer(object):
         val_centers, val_spk2center = Trainer.get_center_from_loader(loaders[task+"_enroll"], feat_model, device)
         batch_scores, batch_labels, val_losses, batch_utt, batch_tag, batch_spk = [], [], [], [], [], []
         # print(f"eval {task} set.")
-        for i, (feat, labels, spk, utt, tag) in enumerate(tqdm(loaders[task], position=0, desc=f"{task} batch", miniters=100, leave=False)):
+        for i, (feat, labels, spk, utt, tag) in enumerate(tqdm(loaders[task], position=0, desc=f"{task} batch", mininterval=100, leave=False)):
             feat, labels = feat.to(device), labels.to(device)
             embs, _ = feat_model(feat)
             w_spks = Trainer.map_speakers_to_center(spks=spk, spk2center=val_spk2center)
