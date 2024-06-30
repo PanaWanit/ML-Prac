@@ -177,7 +177,7 @@ def compute_eer_tdcf(cfg, cm_score_file, asv_score_path):
     eer_asv, asv_threshold = em.compute_eer(tar_asv, non_asv)
     eer_cm = em.compute_eer(bona_cm, spoof_cm)[0]
 
-    [Pfa_asv, Pmiss_asv, Pmiss_spoof_asv, Pfa_spoof_asv] = em.obtain_asv_error_rates(tar_asv, non_asv, spoof_asv, asv_threshold)
+    [Pfa_asv, Pmiss_asv, Pmiss_spoof_asv] = em.obtain_asv_error_rates(tar_asv, non_asv, spoof_asv, asv_threshold)
 
     # Compute t-DCF
     tDCF_curve, CM_thresholds = em.compute_tDCF(bona_cm, spoof_cm, Pfa_asv, Pmiss_asv, Pmiss_spoof_asv, cost_model)

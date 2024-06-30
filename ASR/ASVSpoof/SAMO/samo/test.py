@@ -15,11 +15,10 @@ from samo.utils import compute_eer_tdcf
 
 @torch.no_grad
 def test(model_path:str, loaders:Dict[str, DataLoader], cfg: DictConfig):
-    torch.set_default_tensor_type(torch.FloatTensor)
     os.makedirs(os.path.join(cfg.output_folder, "test_result"))
     save_path = os.path.join(cfg.output_folder, "test_result", f"{cfg.test.save_score}.txt")
 
-    scoring:str = cfg.test.scoring # not used now force to samo only
+    scoring:str = cfg.test.scoring # not used. now force to samo only
 
     feat_model = torch.load(model_path).to(cfg.device)
     print(f"Model loaded: {model_path}")
