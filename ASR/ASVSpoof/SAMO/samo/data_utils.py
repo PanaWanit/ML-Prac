@@ -85,7 +85,7 @@ def genSpoof_list(
 ########################################################################################################################
 
 ####################################################### Dataset ########################################################
-# combined Dataset_ASVspoof2019_train and Dataset_ASVspoof2019_devNeval into one Dataset + SAMO's purpose
+# Combine Dataset_ASVspoof2019_train and Dataset_ASVspoof2019_devNeval into one Dataset + SAMO's purpose
 class ASVspoof2019_speaker(Dataset):
     def __init__(self, list_IDs, labels, utt2spk, base_dir, tag_list, spks, train=True, cut=64600):
         self.list_IDs = list_IDs

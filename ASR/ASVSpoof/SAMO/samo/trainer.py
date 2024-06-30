@@ -1,6 +1,8 @@
 from omegaconf import DictConfig, OmegaConf
 from typing import Dict, Sequence, List, Any, Optional
 
+from collections import defaultdict
+
 import wandb
 import logging
 
@@ -12,7 +14,9 @@ import torch
 from torch import nn, Tensor
 from torch.utils.data import DataLoader
 from torch.optim.swa_utils import AveragedModel
-from collections import defaultdict
+
+# from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.nn import DataParallel as DP
 
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
@@ -39,10 +43,9 @@ class Trainer(object):
 
         self._feat_model:nn.Module = instantiate(cfg.model.model).to(self._device)
         # FIXME: DATA PARALLEL
-        # if cfg.dp and (gpu_cnt := torch.cuda.device_count()) > 1:
-        if False:
+        if cfg.dp and (gpu_cnt := torch.cuda.device_count()) > 1:
             print('Trainer use total', gpu_cnt, 'GPUs')
-            self._feat_model = nn.parallel.DistributedDataParallel(self._feat_model, output_device=[cfg.gpu])
+            self._feat_model = DP(self._feat_model, device_ids=[0, 1]).to(self._device) # temporary
 
         self._loaders:Dict[str, DataLoader] = loaders
         self._train_num_centers:int = loaders["train"].dataset.get_num_centers
