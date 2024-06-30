@@ -77,10 +77,10 @@ class Trainer(object):
         self.__cfg_dict = OmegaConf.to_container(cfg)
     
     def _init_wandb(self) -> None:
-        os.environ["WANDB_PROJECT"] = "SAMO Reimplementation"
         wandb.init(
             job_type="SAMO",
             config=self.__cfg_dict,
+            project="SAMO Reimplementation",
             name=f"{self._device.upper()}-E{self._num_epochs}-T{int(self._target_only)}-DIM{self._feat_dim}-INIT={self._initialize_centers}"
         )
         wandb.watch(self._feat_model, log="all", log_freq=100, log_graph=False)
