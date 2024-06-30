@@ -132,7 +132,7 @@ def wandb_error_handler(func):
             print(f"Found Error in {func.__qualname__}.")
             raise e
         finally:
-            print("Stop recording on wandb...")
+            print("Stop recording on wandb.")
             wandb.unwatch()
             wandb.finish()
     return wrapper
