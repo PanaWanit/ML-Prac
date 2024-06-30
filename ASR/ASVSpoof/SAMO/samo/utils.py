@@ -138,7 +138,7 @@ def wandb_error_handler(func):
     return wrapper
 
 ############################################################## min-tDCF ###############################################################
-import ASR.ASVSpoof.SAMO.samo.eval_metrics as em
+import samo.eval_metrics as em
 def compute_eer_tdcf(cfg, cm_score_file, asv_score_path):
     asv_score_file = os.path.join(asv_score_path)
 
