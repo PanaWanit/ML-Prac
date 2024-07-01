@@ -212,7 +212,7 @@ class Trainer(object):
         val_centers, val_spk2center = Trainer.get_center_from_loader(loaders[task+"_enroll"], feat_model, device)
         batch_scores, batch_labels, val_losses, batch_utt, batch_tag, batch_spk = [], [], [], [], [], []
         # print(f"eval {task} set.")
-        for i, (feat, labels, spk, utt, tag) in enumerate(tqdm(loaders[task], position=0, desc=f"{task} batch")):
+        for i, (feat, labels, spk, utt, tag) in enumerate(tqdm(loaders[task], position=0, desc=f"{task} batch", leave=False)):
             feat, labels = feat.to(device), labels.to(device)
             embs, _ = feat_model(feat)
             w_spks = Trainer.map_speakers_to_center(spks=spk, spk2center=val_spk2center)
