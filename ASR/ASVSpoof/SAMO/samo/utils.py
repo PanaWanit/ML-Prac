@@ -221,5 +221,7 @@ def compute_eer_tdcf(cfg, cm_score_file, asv_score_path):
                 f'\tEER {attack_type}\t\t= {_eer:8.9f} % \n'
             )
     os.system(f"cat {output_file}")
+    if wandb.run is not None:
+        wandb.save(output_file)
 
     return eer_cm, min_tDCF

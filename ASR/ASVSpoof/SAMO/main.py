@@ -17,22 +17,19 @@ def main(cfg: DictConfig) -> None:
         print(OmegaConf.to_yaml(cfg))
         print(48 * '-')
 
-    logging.basicConfig(level=logging.DEBUG, filename="py_dbg_log.log", filemode="w")
-
     setup_seed(cfg.seed)
-    output_dir_setup(cfg)
-    cuda_checker(cfg)
-
     loaders = get_loader(cfg)
+
     if cfg.test_only:
         test_feat_model_path = cfg.test.test_model
         test(test_feat_model_path, loaders, cfg)
-    else:
-        trainer = Trainer(cfg, loaders=loaders)
-        trainer.train()
-        test_feat_model_path = os.path.join(cfg.output_folder, "anti-spoof_best_feat_model.pt")
-        if cfg.train.final_test:
-            test(test_feat_model_path, loaders, cfg)
+        return
+
+    output_dir_setup(cfg)
+    cuda_checker(cfg)
+
+    trainer = Trainer(cfg, loaders=loaders)
+    trainer.train()
         
 if __name__ == '__main__':
     main()

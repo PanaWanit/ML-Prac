@@ -2,6 +2,7 @@ from omegaconf import DictConfig, OmegaConf
 from typing import Dict, Sequence, List, Any, Optional
 
 from collections import defaultdict
+from functools import partial
 
 import wandb
 import logging
@@ -22,6 +23,7 @@ from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 
 from samo.utils import wandb_error_handler
+from samo.test import test
 
 from tqdm.auto import tqdm
 
@@ -40,12 +42,13 @@ class Trainer(object):
         self._final_test:bool = cfg.train.final_test
         self._save_interval = cfg.train.save_interval
         self._target_only:bool = cfg.target_only
+        self._batch_size:int = cfg.batch_size
 
         self._feat_model:nn.Module = instantiate(cfg.model.model).to(self._device)
-        # FIXME: DATA PARALLEL
+
         if cfg.dp and (gpu_cnt := torch.cuda.device_count()) > 1:
             print('Trainer use total', gpu_cnt, 'GPUs')
-            self._feat_model = DP(self._feat_model, device_ids=[0, 1]).to(self._device) # temporary
+            self._feat_model = DP(self._feat_model, device_ids=list(range(gpu_cnt))).to(self._device) 
 
         self._loaders:Dict[str, DataLoader] = loaders
         self._train_num_centers:int = loaders["train"].dataset.get_num_centers
@@ -59,7 +62,7 @@ class Trainer(object):
 
         self._loss_fn:nn.Module = instantiate(cfg.loss.fn)
         
-        self._early_stop:int = 0
+        self._early_stop:int = 0 # Nah
         self._best_val_loss:float = float("inf")
 
 
@@ -74,14 +77,15 @@ class Trainer(object):
         else:
             raise RuntimeError("There is no {cfg.initialize_centers} method.")
         
-        self.__cfg_dict = OmegaConf.to_container(cfg)
+        self._test_fn = partial(test, loaders=self._loaders, cfg=cfg)
+        self.__cfg_dict = OmegaConf.to_container(cfg, resolve=True)
     
     def _init_wandb(self) -> None:
         wandb.init(
             job_type="SAMO",
             config=self.__cfg_dict,
             project="SAMO Reimplementation",
-            name=f"{self._device.upper()}-E{self._num_epochs}-T{int(self._target_only)}-DIM{self._feat_dim}-INIT={self._initialize_centers}"
+            name=f"{self._device.upper()}-E{self._num_epochs}-BSZ{self._batch_size}-T{int(self._target_only)}-DIM{self._feat_dim}-INIT={self._initialize_centers}"
         )
         wandb.watch(self._feat_model, log="all", log_freq=100, log_graph=False)
 
@@ -102,7 +106,12 @@ class Trainer(object):
                 self.feat_model.train() # IDK 
                 self.optimizer_swa.update_parameters(self.feat_model)
 
-            wandb.log({"epoch":epoch, **log_train, **log_val})
+            wandb.log({"epoch":epoch, "best_val_loss": self._best_val_loss, **log_train, **log_val})
+        
+        if self._final_test:
+            test_feat_model_path = os.path.join(self.output_dir, "anti-spoof_best_feat_model.pt")
+            self._test_fn(test_feat_model_path)
+
     
     def _train_epoch(self, epoch:int) -> None:
         self.feat_model.train()
@@ -110,7 +119,7 @@ class Trainer(object):
         train_losses = []
         if epoch % self._update_interval == 0:
             self._update_embeddings() # update both "speakers's center" and "speaker to center"
-        for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["train"], unit="batch", position=0, desc='train batch', leave=False)):
+        for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["train"], unit="batch", position=0, desc='train batch')):
             feat, labels = feat.to(self._device), labels.to(self._device)
 
             self.optimizer.zero_grad()
@@ -158,7 +167,7 @@ class Trainer(object):
         val_centers, val_spk2center = Trainer.get_center_from_loader(loaders[task+"_enroll"], feat_model, device)
         batch_scores, batch_labels, val_losses, batch_utt, batch_tag, batch_spk = [], [], [], [], [], []
         # print(f"eval {task} set.")
-        for i, (feat, labels, spk, utt, tag) in enumerate(tqdm(loaders[task], position=0, desc=f"{task} batch", leave=False)):
+        for i, (feat, labels, spk, utt, tag) in enumerate(tqdm(loaders[task], position=0, desc=f"{task} batch")):
             feat, labels = feat.to(device), labels.to(device)
             embs, _ = feat_model(feat)
             w_spks = Trainer.map_speakers_to_center(spks=spk, spk2center=val_spk2center)
@@ -237,7 +246,7 @@ class Trainer(object):
     def w_centers(self):
         return self._w_centers
     @property
-    def get_loaders(self):
+    def loaders(self):
         return self._loaders
     @property
     def feat_model(self):
