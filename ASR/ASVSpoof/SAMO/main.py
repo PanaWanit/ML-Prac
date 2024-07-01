@@ -7,7 +7,6 @@ import os
 
 from samo.utils import setup_seed, output_dir_setup, cuda_checker
 from samo.trainer import Trainer
-from samo.test import test
 from samo.utils import get_loader
 
 @hydra.main(config_path="configs", config_name="cfg", version_base=None)
@@ -22,7 +21,7 @@ def main(cfg: DictConfig) -> None:
 
     if cfg.test_only:
         test_feat_model_path = cfg.test.test_model
-        test(test_feat_model_path, loaders, cfg)
+        Trainer.test(test_feat_model_path, loaders, cfg)
         return
 
     output_dir_setup(cfg)
