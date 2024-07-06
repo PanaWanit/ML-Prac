@@ -126,7 +126,8 @@ class Trainer(object):
 
             self.optimizer.zero_grad()
 
-            embs, y_labels = self.feat_model(feat)
+            embs, out = self.feat_model(feat)
+            _, y_labels = torch.max(out, dim=1)
 
             num_total += feat.size(0)
             num_correct += torch.sum(y_labels == labels).item()
