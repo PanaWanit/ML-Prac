@@ -9,6 +9,7 @@ import logging
 
 from hydra.utils import instantiate
 import os
+import sys
 
 import numpy as np
 import torch
@@ -119,12 +120,18 @@ class Trainer(object):
         train_losses = []
         if epoch % self._update_interval == 0:
             self._update_embeddings() # update both "speakers's center" and "speaker to center"
+        num_total, num_correct = 0, 0
         for i, (feat, labels, spk, _, _) in enumerate(tqdm(self._loaders["train"], unit="batch", position=0, desc='train batch')):
             feat, labels = feat.to(self._device), labels.to(self._device)
 
             self.optimizer.zero_grad()
 
-            embs, _ = self.feat_model(feat)
+            embs, y_labels = self.feat_model(feat)
+
+            num_total += feat.size(0)
+            num_correct += torch.sum(y_labels == labels).item()
+            if i % 10 == 0:
+                sys.stdout.write(f'\r\t train acc: {100 * num_correct / num_total}%')
 
             w_spks = self.map_speakers_to_center(spks=spk, spk2center=self._train_spk2center)
 
@@ -150,8 +157,6 @@ class Trainer(object):
                                                         loss_fn=self.loss_fn, device=self._device,
                                                         target_only=self._target_only)
         
-        # BUG: which val_labels == 0 or 1 should be placed first?
-        # For computes EER, does the result remain the same?
         eer, _ = em.compute_eer(scores[labels == 0], scores[labels == 1])
 
         return {
