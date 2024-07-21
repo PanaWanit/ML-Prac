@@ -19,5 +19,4 @@ optim:
 
 scheduler: 
   _target_: torch.optim.lr_scheduler.CosineAnnealingLR
-  T_max: 100
   eta_min: 0.000005

@@ -59,7 +59,7 @@ class Trainer(object):
         
         self._optimizer:Optimizer = instantiate(cfg.train.optim, params=self._feat_model.parameters())
         self._optimizer_swa = AveragedModel(self._feat_model, device=self._device)
-        self._scheduler:LRScheduler = instantiate(cfg.train.scheduler, optimizer=self._optimizer)
+        self._scheduler:LRScheduler = instantiate(cfg.train.scheduler, optimizer=self._optimizer, T_max = 2 * cfg.num_epochs * len(loaders["train"]) )
 
         self._loss_fn:nn.Module = instantiate(cfg.loss.fn)
         
@@ -167,13 +167,13 @@ class Trainer(object):
     
     @staticmethod
     @torch.no_grad
-    def test(model_path:str, loaders:Dict[str, DataLoader], cfg: DictConfig):
+    def test(model_path:str, loaders:Dict[str, DataLoader], cfg: DictConfig) -> None:
         os.makedirs(os.path.join(cfg.output_folder, "test_result"), exist_ok=True)
         save_path = os.path.join(cfg.output_folder, "test_result", f"{cfg.test.save_score}.txt")
         asv_score_path = os.path.join(cfg.path_to_database, "ASVspoof2019_LA_asv_scores", "ASVspoof2019.LA.asv.eval.gi.trl.scores.txt")
 
         if os.path.exists(save_path):
-            print(f"Found score file: {save_path}\n Computer err tdcf only.")
+            print(f"Found score file: {save_path}\n Compute err tdcf only.")
             compute_eer_tdcf(cfg, save_path, asv_score_path)
             return
 
@@ -212,7 +212,12 @@ class Trainer(object):
     
     @staticmethod
     @torch.no_grad
-    def dev_n_eval(task:str, loaders:Dict[str, DataLoader], feat_model:nn.Module, loss_fn:nn.Module, device:str, target_only:bool):
+    def dev_n_eval(task:str, 
+                   loaders:Dict[str, DataLoader],
+                   feat_model:nn.Module,
+                   loss_fn:nn.Module,
+                   device:str, 
+                   target_only:bool):
         assert task in ["eval", "dev"]
         feat_model.eval()
         val_centers, val_spk2center = Trainer.get_center_from_loader(loaders[task+"_enroll"], feat_model, device)
@@ -223,7 +228,7 @@ class Trainer(object):
             embs, _ = feat_model(feat)
             w_spks = Trainer.map_speakers_to_center(spks=spk, spk2center=val_spk2center)
             if target_only:
-                loss, score = loss_fn(embs, labels, w_centers=val_centers, w_spks=w_spks, get_score=True) # get_score for computer eer
+                loss, score = loss_fn(embs, labels, w_centers=val_centers, w_spks=w_spks, get_score=True) # get_score for compute eer
             else: # TODO: Implement SAMO.inference to handle non-target only
                 raise NotImplementedError # Not implement SAMO.inference yet
             
